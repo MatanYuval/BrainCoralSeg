@@ -1,10 +1,43 @@
+#Step1: Deactivate far away cameras
+chunk = Metashape.app.document.chunk
+tie_points = chunk.tie_points.points
+tie_point_coords = [tp.coord[:3] for tp in tie_points]
+
+# Calculate the average tie point
+average_tie_point = sum(tie_point_coords, Metashape.Vector([0, 0, 0])) / len(tie_point_coords)
+
+def euclidean_distance(point1, point2):
+    return ((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2 + (point1[2] - point2[2])**2)**0.5
+
+# Iterate through cameras and check distance from the average tie point
+far_away_cameras = []
+for camera in chunk.cameras:
+    camera_coord = camera.center
+    if camera_coord is not None:
+        distance_to_average = euclidean_distance(camera_coord, average_tie_point)
+        far_away_cameras.append((camera, distance_to_average))
+    
+# Calculate the average distance from cameras to the average tie point
+average_distance = sum(distance for _, distance in far_away_cameras) / len(far_away_cameras)
+
+# Set the threshold as the average distance
+threshold_distance = average_distance
+
+for camera, distance_to_average in far_away_cameras:
+    if distance_to_average > threshold_distance*1.5:
+        camera.enabled = False
+
+##REDUCE OVERLAP:
+
 
 chunk.reduceOverlap(overlap=1)
+for camera in chunk.cameras:
+    if camera.enabled:
+        camera.selected = True
+        print(f"Selected active camera: {camera.label}")
 
- for camera in chunk.cameras:
-        if camera.enabled:
-            camera.selected = True
-            print(f"Selected active camera: {camera.label}")
+
+
 
 
 
