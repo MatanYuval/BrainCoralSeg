@@ -2,7 +2,7 @@ import Metashape
 import os
 import cv2
 
-def deactivate_far_away_cameras(chunk, overlap, distance_threshold):
+def deactivate_far_away_cameras(chunk, overlap, distance_threshold, use_selection):
     """
     Deactivates cameras that are far away from the average tie point based on the specified distance threshold.
 
@@ -44,7 +44,7 @@ def deactivate_far_away_cameras(chunk, overlap, distance_threshold):
             camera.enabled = False
 
     # Reduce overlap
-    chunk.reduceOverlap(overlap=overlap)
+    chunk.reduceOverlap(overlap=overlap, use_selection = use_selection)
     for camera in chunk.cameras:
         if camera.enabled:
             camera.selected = True
@@ -102,13 +102,14 @@ def process_chunk():
     # Get user inputs
     target_folder = Metashape.app.getString("Specify the target folder for cropped images:")
     overlap = Metashape.app.getFloat("Specify the desired overlap percentage for camera reduction:", 1.0)
+    use_selection = Metashape.app.getString("Use selection for overlap reduction: True or False:", "True")
     distance_threshold = Metashape.app.getFloat("Specify the distance threshold for deactivating cameras (multiplier):", 1.5)
 
     # Call the function to deactivate far away cameras
-    deactivate_far_away_cameras(chunk, overlap, distance_threshold)
+    deactivate_far_away_cameras(chunk, overlap, distance_threshold, use_selection)
 
     # Call the function to crop and copy the middle third of each image
     crop_and_copy_middle_third(chunk, target_folder)
 
 # Call the function to process the active chunk
-Metashape.app.addMenuItem("BenthicFriend/process_chunks", process_chunk)
+Metashape.app.addMenuItem("BenthicFriend/GetImagesForLabeling", process_chunk)
