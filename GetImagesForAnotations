@@ -1,52 +1,56 @@
-#Step1: Deactivate far away cameras
-chunk = Metashape.app.document.chunk
-tie_points = chunk.tie_points.points
-tie_point_coords = [tp.coord[:3] for tp in tie_points]
-
-# Calculate the average tie point
-average_tie_point = sum(tie_point_coords, Metashape.Vector([0, 0, 0])) / len(tie_point_coords)
-
-def euclidean_distance(point1, point2):
-    return ((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2 + (point1[2] - point2[2])**2)**0.5
-
-# Iterate through cameras and check distance from the average tie point
-far_away_cameras = []
-for camera in chunk.cameras:
-    camera_coord = camera.center
-    if camera_coord is not None:
-        distance_to_average = euclidean_distance(camera_coord, average_tie_point)
-        far_away_cameras.append((camera, distance_to_average))
-    
-# Calculate the average distance from cameras to the average tie point
-average_distance = sum(distance for _, distance in far_away_cameras) / len(far_away_cameras)
-
-# Set the threshold as the average distance
-threshold_distance = average_distance
-
-for camera, distance_to_average in far_away_cameras:
-    if distance_to_average > threshold_distance*1.5:
-        camera.enabled = False
-
-##REDUCE OVERLAP:
-
-
-chunk.reduceOverlap(overlap=1)
-for camera in chunk.cameras:
-    if camera.enabled:
-        camera.selected = True
-        print(f"Selected active camera: {camera.label}")
-
-
-
-
-
-
-
-###2)  
-#Trim cameras and write them to anew folder::
 import Metashape
 import os
 import cv2
+
+def deactivate_far_away_cameras(chunk, overlap, distance_threshold):
+    """
+    Deactivates cameras that are far away from the average tie point based on the specified distance threshold.
+
+    Parameters:
+    - chunk: Metashape.Chunk
+        The chunk containing the cameras and tie points.
+    - overlap: float
+        The desired overlap value for camera reduction.
+    - distance_threshold: float
+        The threshold distance for deactivating cameras.
+    """
+    # Get the coordinates of tie points
+    tie_points = chunk.tie_points.points
+    tie_point_coords = [tp.coord[:3] for tp in tie_points]
+
+    # Calculate the average tie point
+    average_tie_point = sum(tie_point_coords, Metashape.Vector([0, 0, 0])) / len(tie_point_coords)
+
+    def euclidean_distance(point1, point2):
+        return ((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2 + (point1[2] - point2[2])**2)**0.5
+
+    # Iterate through cameras and check distance from the average tie point
+    far_away_cameras = []
+    for camera in chunk.cameras:
+        camera_coord = camera.center
+        if camera_coord is not None:
+            distance_to_average = euclidean_distance(camera_coord, average_tie_point)
+            far_away_cameras.append((camera, distance_to_average))
+
+    # Calculate the average distance from cameras to the average tie point
+    average_distance = sum(distance for _, distance in far_away_cameras) / len(far_away_cameras)
+
+    # Set the threshold as the average distance
+    threshold_distance = average_distance
+
+    # Deactivate (disable) cameras that are far away
+    for camera, distance_to_average in far_away_cameras:
+        if distance_to_average > threshold_distance * distance_threshold:
+            camera.enabled = False
+
+    # Reduce overlap
+    chunk.reduceOverlap(overlap=overlap)
+    for camera in chunk.cameras:
+        if camera.enabled:
+            camera.selected = True
+            print(f"Selected active camera: {camera.label}")
+    print("Far away cameras deactivated.")
+    print(f"Overlap reduced to {overlap}%.")
 
 def crop_and_copy_middle_third(chunk, target_folder):
     """
@@ -91,13 +95,20 @@ def crop_and_copy_middle_third(chunk, target_folder):
 
             print(f"Cropped and copied middle third of width and height from {image_name} to {target_folder}")
 
-# Example of usage:
-if __name__ == "__main__":
-    # Assume 'doc' is your Metashape document
+def process_chunk():
+    # Get the active chunk
     chunk = Metashape.app.document.chunk
 
-    # Specify the target folder where cropped images will be copied
-    target_folder = r"O:\BOCAS\ImageCropTrial\BocasD3Chunk6"
+    # Get user inputs
+    target_folder = Metashape.app.getString("Specify the target folder for cropped images:")
+    overlap = Metashape.app.getFloat("Specify the desired overlap percentage for camera reduction:", 1.0)
+    distance_threshold = Metashape.app.getFloat("Specify the distance threshold for deactivating cameras (multiplier):", 1.5)
 
-    # Call the function to crop and copy the middle third of each image in terms of width and height
+    # Call the function to deactivate far away cameras
+    deactivate_far_away_cameras(chunk, overlap, distance_threshold)
+
+    # Call the function to crop and copy the middle third of each image
     crop_and_copy_middle_third(chunk, target_folder)
+
+# Call the function to process the active chunk
+Metashape.app.addMenuItem("BenthicFriend/process_chunks", process_chunk)
