@@ -1,0 +1,70 @@
+
+chunk.reduceOverlap(overlap=1)
+
+ for camera in chunk.cameras:
+        if camera.enabled:
+            camera.selected = True
+            print(f"Selected active camera: {camera.label}")
+
+
+
+
+###2)  
+#Trim cameras and write them to anew folder::
+import Metashape
+import os
+import cv2
+
+def crop_and_copy_middle_third(chunk, target_folder):
+    """
+    Crops the middle third of each image in terms of width and height and copies it to the specified target folder using OpenCV.
+
+    Parameters:
+    - chunk: Metashape.Chunk
+        The chunk containing the images to be processed.
+    - target_folder: str
+        The path to the target folder where cropped images will be copied.
+    """
+    if not os.path.exists(target_folder):
+        os.makedirs(target_folder)
+
+    for camera in chunk.cameras:
+        if camera.selected:
+            image_path = camera.photo.path
+            image_name = os.path.basename(image_path)
+            target_path = os.path.join(target_folder, image_name)
+
+            # Read the image using OpenCV
+            image = cv2.imread(image_path)
+
+            # Get image dimensions
+            height, width, _ = image.shape
+
+            # Calculate the cropping dimensions for the middle third of the width
+            crop_width = width // 3
+            left = (width - crop_width) // 2
+            right = (width + crop_width) // 2
+
+            # Calculate the cropping dimensions for the middle third of the height
+            crop_height = height // 3
+            top = (height - crop_height) // 2
+            bottom = (height + crop_height) // 2
+
+            # Crop the middle third of both width and height
+            cropped_image = image[top:bottom, left:right]
+
+            # Save the cropped image to the target folder
+            cv2.imwrite(target_path, cropped_image)
+
+            print(f"Cropped and copied middle third of width and height from {image_name} to {target_folder}")
+
+# Example of usage:
+if __name__ == "__main__":
+    # Assume 'doc' is your Metashape document
+    chunk = Metashape.app.document.chunk
+
+    # Specify the target folder where cropped images will be copied
+    target_folder = r"O:\BOCAS\ImageCropTrial\BocasD3Chunk6"
+
+    # Call the function to crop and copy the middle third of each image in terms of width and height
+    crop_and_copy_middle_third(chunk, target_folder)
